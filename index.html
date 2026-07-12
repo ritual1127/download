@@ -252,25 +252,25 @@
       if(data.hisTimetable && data.hisTimetable[1] && data.hisTimetable[1].row){
         let rows = data.hisTimetable[1].row;
         
-        // 🔍 전공 과목명 기반 하드 필터링 적용
+        // 🔒 블랙리스트 기반의 상호 배제 하드 필터링 로직
         let filteredRows = rows.filter(function(row) {
           const subject = row.ITRT_CNTNT ? row.ITRT_CNTNT.trim() : '';
           
           if (currentDept === '메카트로닉스과') {
-            // 전자과 전공 과목 및 특정 제외 과목 차단
-            if (subject.includes('하드웨어 부품 선정') || subject.includes('전기 설비') || (subject === '영어 I')) {
+            // 메카과일 때는 전자과 전공 과목을 무조건 "false"로 튕겨냄
+            if (subject.includes('하드웨어 부품 선정') || subject.includes('전기 설비') || subject === '영어 I' || subject === '영어I') {
               return false;
             }
           } else if (currentDept === '전자과') {
-            // 메카과 전공 과목 차단
-            if (subject.includes('공기압 제어') || subject.includes('센서 활용 기술')) {
+            // 전자과일 때는 메카과 전공 과목을 무조건 "false"로 튕겨냄
+            if (subject.includes('공기압 제어') || subject.includes('센서 활용 기술') || subject.includes('공기압제어') || subject.includes('센서활용')) {
               return false;
             }
           }
           return true;
         });
 
-        // 1개 교시에 과목이 2개 겹쳐서 남아있을 경우 학과명 우선순위 매칭 시도
+        // 한 교시에 남은 과목이 중복 매칭되는 경우 최종 정리
         const perioMap = {};
         filteredRows.forEach(row => {
           if(!perioMap[row.PERIO]) perioMap[row.PERIO] = [];
@@ -281,10 +281,20 @@
         Object.keys(perioMap).forEach(perio => {
           const arr = perioMap[perio];
           if(arr.length > 1) {
-            // 같은 교시에 과목이 여러 개면 선택한 과 이름이 조금이라도 묻어있는 것 선택
+            // 나이스 원본에 어떻게 적혀있든, 선택한 과의 키워드가 눈곱만큼이라도 담긴 걸 최우선 적용
             const exact = arr.find(r => r.DDISH_NM && r.DDISH_NM.includes(currentDept));
-            if(exact) finalRows.push(exact);
-            else finalRows.push(arr[0]); // 분간이 안 되면 첫 번째 데이터 유지
+            if(exact) {
+              finalRows.push(exact);
+            } else {
+              // 2차 백업: 과 명칭으로 분간이 안 되면 현재 선택학과에 따른 과목 필터링 재가동
+              if (currentDept === '메카트로닉스과') {
+                const mechaItem = arr.find(r => r.ITRT_CNTNT.includes('공기압') || r.ITRT_CNTNT.includes('센서') || r.ITRT_CNTNT.includes('수학'));
+                finalRows.push(mechaItem || arr[0]);
+              } else {
+                const jeonjaItem = arr.find(r => r.ITRT_CNTNT.includes('하드웨어') || r.ITRT_CNTNT.includes('전기') || r.ITRT_CNTNT.includes('영어'));
+                finalRows.push(jeonjaItem || arr[0]);
+              }
+            }
           } else {
             finalRows.push(arr[0]);
           }
