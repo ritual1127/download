@@ -10,10 +10,16 @@
   :root{--bg:#f7f6f2;--surface:#fff;--surface2:#f0efe9;--border:rgba(0,0,0,0.08);--text:#0e0e0c;--sub:#6b6b66;--hint:#c0bfb8;--blue:#1d6ef5;--blue-bg:#eef3ff;--blue-txt:#1244b0}
   [data-dark]{--bg:#0c0c0b;--surface:#181816;--surface2:#1f1f1c;--border:rgba(255,255,255,0.08);--text:#f2f2ee;--sub:#888880;--hint:#333330;--blue-bg:#0f1e3a;--blue-txt:#6b9fff}
   body{font-family:'Noto Sans KR',-apple-system,sans-serif;background:var(--bg);color:var(--text);max-width:440px;margin:0 auto;min-height:100vh;padding-bottom:60px;touch-action:pan-y}
-  .header{padding:52px 20px 24px;display:flex;justify-content:space-between;align-items:center}
+  .header{padding:52px 20px 20px;display:flex;justify-content:space-between;align-items:center}
   .header-school{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);margin-bottom:4px}
   .header-title{font-size:26px;font-weight:900;letter-spacing:-.8px;line-height:1}
   .dark-btn{width:38px;height:38px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  
+  /* 학년/반/과 선택 바 스타일 */
+  .selector-bar{margin:0 20px 12px;display:flex;gap:6px;}
+  .select-box{flex:1;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;font-size:13px;font-weight:600;padding:0 8px;cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;text-align:center;}
+  .select-box-dept{flex:2;} /* 과 선택창은 조금 더 넓게 */
+
   .date-bar{margin:0 20px 18px;background:var(--surface);border-radius:18px;border:1px solid var(--border);padding:14px 16px}
   .date-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
   .date-arrow{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -61,10 +67,33 @@
 <div class="header">
   <div>
     <div class="header-school">구미전자공업고등학교</div>
-    <div class="header-title">오늘의 급식</div>
+    <div class="header-title">오늘의 급식/시간표</div>
   </div>
   <button class="dark-btn" id="darkBtn" onclick="toggleDark()">&#127769;</button>
 </div>
+
+<div class="selector-bar">
+  <select class="select-box" id="gradeSelect" onchange="changeTarget()">
+    <option value="1">1학년</option>
+    <option value="2" selected>2학년</option>
+    <option value="3">3학년</option>
+  </select>
+  <select class="select-box" id="classSelect" onchange="changeTarget()">
+    <option value="1">1반</option>
+    <option value="2" selected>2반</option>
+    <option value="3">3반</option>
+    <option value="4">4반</option>
+    <option value="5">5반</option>
+    <option value="6">6반</option>
+    <option value="7">7반</option>
+    <option value="8">8반</option>
+  </select>
+  <select class="select-box select-box-dept" id="deptSelect" onchange="changeTarget()">
+    <option value="전자과">전자과</option>
+    <option value="메카트로닉스과" selected>메카트로닉스과</option>
+  </select>
+</div>
+
 <div class="date-bar">
   <div class="date-row">
     <button class="date-arrow" onclick="move(-1)">&#8249;</button>
@@ -78,7 +107,6 @@
 </div>
 
 <div class="meals" id="meals"></div>
-
 <div class="timetable-section" id="timetableSection"></div>
 
 <div class="share-row" id="shareRow" style="display:none">
@@ -95,6 +123,16 @@
   const DOW=['일','월','화','수','목','금','토'];
   const NAMES={'1':'조식','2':'중식','3':'석식'};
 
+  // 설정 저장용 변수
+  let currentGrade = localStorage.getItem('user_grade') || '2';
+  let currentClass = localStorage.getItem('user_class') || '2';
+  let currentDept = localStorage.getItem('user_dept') || '메카트로닉스과';
+
+  // 초기 셀렉트 박스 값 매칭
+  document.getElementById('gradeSelect').value = currentGrade;
+  document.getElementById('classSelect').value = currentClass;
+  document.getElementById('deptSelect').value = currentDept;
+
   const saved=localStorage.getItem('dk');
   if(saved==='1'||(!saved&&matchMedia('(prefers-color-scheme:dark)').matches))setDark(true);
   function setDark(v){v?document.body.setAttribute('data-dark',''):document.body.removeAttribute('data-dark');document.getElementById('darkBtn').textContent=v?'\u2600\uFE0F':'\uD83C\uDF19';}
@@ -102,7 +140,7 @@
 
   let cur=new Date();
   const cache={};
-  const ttCache={}; // 시간표 캐시 추가
+  const ttCache={}; 
   const pad=n=>String(n).padStart(2,'0');
   const fmt=d=>d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate());
   const isToday=d=>fmt(d)===fmt(new Date());
@@ -146,7 +184,19 @@
     },160);
   }
 
-  // 스와이프 감지
+  // 드롭다운 변경 시 트리거
+  function changeTarget(){
+    currentGrade = document.getElementById('gradeSelect').value;
+    currentClass = document.getElementById('classSelect').value;
+    currentDept = document.getElementById('deptSelect').value;
+    
+    localStorage.setItem('user_grade', currentGrade);
+    localStorage.setItem('user_class', currentClass);
+    localStorage.setItem('user_dept', currentDept);
+    
+    loadTimetable(true); // 변경 시에는 해당 날짜 캐시를 무시하고 강제 리로드
+  }
+
   (function(){
     let sx=0,sy=0;
     document.body.addEventListener('touchstart',function(e){
@@ -161,13 +211,11 @@
     },{passive:true});
   })();
 
-  // 두 기능을 동시에 묶어서 호출하는 함수
   function loadAll(){
     loadMeals();
     loadTimetable();
   }
 
-  // 기존 100% 디자인 유지한 급식 로드 함수
   async function loadMeals(){
     const key=fmt(cur);
     const el=document.getElementById('meals');
@@ -194,23 +242,25 @@
     document.getElementById('shareRow').style.display='flex';
   }
 
-  // 2학년 2반 메카트로닉스과 시간표 연동 기능 (추가됨)
-  async function loadTimetable(){
-    const key=fmt(cur);
+  async function loadTimetable(forceRefresh = false){
+    const dateKey=fmt(cur);
+    // 캐시 키에 학년, 반, 학과명을 함께 묶어 고유 키로 활용
+    const cacheKey=`${dateKey}_${currentGrade}_${currentClass}_${currentDept}`;
     const tel=document.getElementById('timetableSection');
-    if(ttCache[key]){renderTimetable(ttCache[key]);return;}
+    
+    if(!forceRefresh && ttCache[cacheKey]){renderTimetable(ttCache[cacheKey]);return;}
     tel.innerHTML='<div class="state"><div class="spinner"></div>시간표 불러오는 중...</div>';
     try{
-      const url='https://open.neis.go.kr/hub/hisTimetable?KEY='+KEY+'&Type=json&pIndex=1&pSize=100&ATPT_OFCDC_SC_CODE='+OFFICE+'&SD_SCHUL_CODE='+SCHOOL+'&GRADE=2&CLASS_NM=2&ALL_TI_YMD='+key;
+      const url=`https://open.neis.go.kr/hub/hisTimetable?KEY=${KEY}&Type=json&pIndex=1&pSize=100&ATPT_OFCDC_SC_CODE=${OFFICE}&SD_SCHUL_CODE=${SCHOOL}&GRADE=${currentGrade}&CLASS_NM=${currentClass}&DDISH_NM=${encodeURIComponent(currentDept)}&ALL_TI_YMD=${dateKey}`;
       const res=await fetch(url);
       const data=await res.json();
       if(data.hisTimetable && data.hisTimetable[1] && data.hisTimetable[1].row){
         let rows = data.hisTimetable[1].row;
         rows.sort((a, b) => parseInt(a.PERIO) - parseInt(b.PERIO));
-        ttCache[key]=rows;
+        ttCache[cacheKey]=rows;
         renderTimetable(rows);
       }else{
-        ttCache[key]=[];
+        ttCache[cacheKey]=[];
         renderTimetable([]);
       }
     }catch(e){
