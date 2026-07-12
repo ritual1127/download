@@ -252,20 +252,47 @@
       if(data.hisTimetable && data.hisTimetable[1] && data.hisTimetable[1].row){
         let rows = data.hisTimetable[1].row;
         
-        // 🔍 포함 검사(includes) 및 undefined 예외 처리로 필터링 로직 강화
+        // 🔍 전공 과목명 기반 하드 필터링 적용
         let filteredRows = rows.filter(function(row) {
-          if (!row.DDISH_NM) return true; // 학과명이 비어서 오면(undefined) 필터링 없이 통과
-          return row.DDISH_NM.trim().includes(currentDept.trim());
+          const subject = row.ITRT_CNTNT ? row.ITRT_CNTNT.trim() : '';
+          
+          if (currentDept === '메카트로닉스과') {
+            // 전자과 전공 과목 및 특정 제외 과목 차단
+            if (subject.includes('하드웨어 부품 선정') || subject.includes('전기 설비') || (subject === '영어 I')) {
+              return false;
+            }
+          } else if (currentDept === '전자과') {
+            // 메카과 전공 과목 차단
+            if (subject.includes('공기압 제어') || subject.includes('센서 활용 기술')) {
+              return false;
+            }
+          }
+          return true;
         });
 
-        // 만약 포함 검사로 걸렀는데 데이터가 0개면, 학교 입력 오류일 수 있으므로 전체 반 시간표 노출
-        if(filteredRows.length === 0) {
-          filteredRows = rows;
-        }
+        // 1개 교시에 과목이 2개 겹쳐서 남아있을 경우 학과명 우선순위 매칭 시도
+        const perioMap = {};
+        filteredRows.forEach(row => {
+          if(!perioMap[row.PERIO]) perioMap[row.PERIO] = [];
+          perioMap[row.PERIO].push(row);
+        });
+
+        let finalRows = [];
+        Object.keys(perioMap).forEach(perio => {
+          const arr = perioMap[perio];
+          if(arr.length > 1) {
+            // 같은 교시에 과목이 여러 개면 선택한 과 이름이 조금이라도 묻어있는 것 선택
+            const exact = arr.find(r => r.DDISH_NM && r.DDISH_NM.includes(currentDept));
+            if(exact) finalRows.push(exact);
+            else finalRows.push(arr[0]); // 분간이 안 되면 첫 번째 데이터 유지
+          } else {
+            finalRows.push(arr[0]);
+          }
+        });
         
-        filteredRows.sort((a, b) => parseInt(a.PERIO) - parseInt(b.PERIO));
-        ttCache[cacheKey]=filteredRows;
-        renderTimetable(filteredRows);
+        finalRows.sort((a, b) => parseInt(a.PERIO) - parseInt(b.PERIO));
+        ttCache[cacheKey]=finalRows;
+        renderTimetable(finalRows);
       }else{
         ttCache[cacheKey]=[];
         renderTimetable([]);
